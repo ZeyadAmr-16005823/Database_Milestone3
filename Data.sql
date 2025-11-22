@@ -474,7 +474,7 @@ INSERT INTO ApprovalWorkflowStep (workflow_id, step_number, role_id, action_requ
 
 
 
--- =============================================
+- =============================================
 -- Tarek - Payroll, Salary Types & Policies
 -- Data Insertion Script
 -- =============================================
@@ -491,12 +491,12 @@ VALUES
 -- Insert Salary Types
 INSERT INTO SalaryType (type, payment_frequency, currency)
 VALUES 
-('Hourly', 'Weekly', 'Egyptian Pound'),
-('Monthly', 'Monthly', 'Egyptian Pound'),
-('Contract', 'Milestone', 'US Dollar'),
-('Monthly', 'Monthly', 'US Dollar'),
-('Hourly', 'Bi-Weekly', 'US Dollar'),
-('Monthly', 'Monthly', 'Saudi Riyal');
+('Hourly', 'Weekly', 'EGP'),
+('Monthly', 'Monthly', 'EGP'),
+('Contract', 'Milestone', 'USD'),
+('Monthly', 'Monthly', 'USD'),
+('Hourly', 'Bi-Weekly', 'USD'),
+('Monthly', 'Monthly', 'SAR');
 
 -- Insert Hourly Salary Types
 INSERT INTO HourlySalaryType (salary_type_id, hourly_rate, max_monthly_hours)
@@ -602,32 +602,32 @@ VALUES
 INSERT INTO AllowanceDeduction (payroll_id, employee_id, type, amount, currency, duration, timezone)
 VALUES 
 -- January allowances
-(1, 1, 'Allowance', 500.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(2, 2, 'Allowance', 300.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(3, 3, 'Allowance', 1000.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(4, 4, 'Allowance', 200.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(5, 5, 'Allowance', 400.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(6, 6, 'Allowance', 600.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(7, 7, 'Allowance', 150.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(8, 8, 'Allowance', 1200.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(9, 9, 'Allowance', 350.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(10, 10, 'Allowance', 450.00, 'Egyptian Pound', 'Monthly', 'EET'),
+(1, 1, 'Allowance', 500.00, 'EGP', 'Monthly', 'EET'),
+(2, 2, 'Allowance', 300.00, 'EGP', 'Monthly', 'EET'),
+(3, 3, 'Allowance', 1000.00, 'EGP', 'Monthly', 'EET'),
+(4, 4, 'Allowance', 200.00, 'EGP', 'Monthly', 'EET'),
+(5, 5, 'Allowance', 400.00, 'EGP', 'Monthly', 'EET'),
+(6, 6, 'Allowance', 600.00, 'EGP', 'Monthly', 'EET'),
+(7, 7, 'Allowance', 150.00, 'EGP', 'Monthly', 'EET'),
+(8, 8, 'Allowance', 1200.00, 'EGP', 'Monthly', 'EET'),
+(9, 9, 'Allowance', 350.00, 'EGP', 'Monthly', 'EET'),
+(10, 10, 'Allowance', 450.00, 'EGP', 'Monthly', 'EET'),
 
 -- Some deductions
-(3, 3, 'Deduction', 200.00, 'Egyptian Pound', 'One-time', 'EET'),
-(8, 8, 'Deduction', 300.00, 'Egyptian Pound', 'One-time', 'EET'),
+(3, 3, 'Deduction', 200.00, 'EGP', 'One-time', 'EET'),
+(8, 8, 'Deduction', 300.00, 'EGP', 'One-time', 'EET'),
 
 -- February allowances
-(11, 1, 'Allowance', 700.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(12, 2, 'Allowance', 300.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(13, 3, 'Allowance', 1500.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(14, 4, 'Allowance', 250.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(15, 5, 'Allowance', 500.00, 'Egyptian Pound', 'Monthly', 'EET'),
+(11, 1, 'Allowance', 700.00, 'EGP', 'Monthly', 'EET'),
+(12, 2, 'Allowance', 300.00, 'EGP', 'Monthly', 'EET'),
+(13, 3, 'Allowance', 1500.00, 'EGP', 'Monthly', 'EET'),
+(14, 4, 'Allowance', 250.00, 'EGP', 'Monthly', 'EET'),
+(15, 5, 'Allowance', 500.00, 'EGP', 'Monthly', 'EET'),
 
 -- March allowances
-(16, 1, 'Allowance', 500.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(17, 2, 'Allowance', 400.00, 'Egyptian Pound', 'Monthly', 'EET'),
-(18, 3, 'Allowance', 2000.00, 'Egyptian Pound', 'Monthly', 'EET');
+(16, 1, 'Allowance', 500.00, 'EGP', 'Monthly', 'EET'),
+(17, 2, 'Allowance', 400.00, 'EGP', 'Monthly', 'EET'),
+(18, 3, 'Allowance', 2000.00, 'EGP', 'Monthly', 'EET');
 
 -- Link Payroll to Policies
 INSERT INTO PayrollPolicy_ID (payroll_id, policy_id)
@@ -703,7 +703,5 @@ VALUES
 (16, '2025-03-01', '2025-03-31', 'Open'),
 (17, '2025-03-01', '2025-03-31', 'Open'),
 (18, '2025-03-01', '2025-03-31', 'Open');
-
-
 
 -------------------------Tarek End ---------------------------------------
