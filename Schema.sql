@@ -519,3 +519,173 @@ CREATE TABLE Device (
     FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
 );
 --------- Omar Zaher End -------------
+
+
+
+-- =============================================
+-- Tarek - Payroll, Salary Types & Policies
+-- Tables Creation Script
+-- =============================================
+
+-- Currency Table
+CREATE TABLE Currency (
+    CurrencyCode VARCHAR(10) PRIMARY KEY,
+    CurrencyName VARCHAR(50) NOT NULL,
+    ExchangeRate DECIMAL(10,4) NOT NULL,
+    CreatedDate DATETIME DEFAULT GETDATE(),
+    LastUpdated DATETIME DEFAULT GETDATE()
+);
+
+-- Salary Type Table
+CREATE TABLE SalaryType (
+    salary_type_id INT PRIMARY KEY IDENTITY(1,1),
+    type VARCHAR(50) NOT NULL,
+    payment_frequency VARCHAR(50),
+    currency VARCHAR(50),
+    FOREIGN KEY (currency) REFERENCES Currency(CurrencyName)
+);
+
+-- Hourly Salary Type
+CREATE TABLE HourlySalaryType (
+    salary_type_id INT PRIMARY KEY,
+    hourly_rate DECIMAL(10,2) NOT NULL,
+    max_monthly_hours INT,
+    FOREIGN KEY (salary_type_id) REFERENCES SalaryType(salary_type_id)
+);
+
+-- Monthly Salary Type
+CREATE TABLE MonthlySalaryType (
+    salary_type_id INT PRIMARY KEY,
+    tax_rule VARCHAR(200),
+    contribution_scheme VARCHAR(200),
+    FOREIGN KEY (salary_type_id) REFERENCES SalaryType(salary_type_id)
+);
+
+-- Contract Salary Type
+CREATE TABLE ContractSalaryType (
+    salary_type_id INT PRIMARY KEY,
+    contract_value DECIMAL(10,2) NOT NULL,
+    installment_details VARCHAR(500),
+    FOREIGN KEY (salary_type_id) REFERENCES SalaryType(salary_type_id)
+);
+
+-- Pay Grade Table
+CREATE TABLE PayGrade (
+    pay_grade_id INT PRIMARY KEY IDENTITY(1,1),
+    grade_name VARCHAR(50) NOT NULL UNIQUE,
+    min_salary DECIMAL(10,2) NOT NULL,
+    max_salary DECIMAL(10,2) NOT NULL,
+    CONSTRAINT CHK_PayGrade_MinMax CHECK (min_salary < max_salary)
+);
+
+-- Payroll Table
+CREATE TABLE Payroll (
+    payroll_id INT PRIMARY KEY IDENTITY(1,1),
+    employee_id INT NOT NULL,
+    taxes DECIMAL(10,2) DEFAULT 0,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    base_amount DECIMAL(10,2) NOT NULL,
+    adjustments DECIMAL(10,2) DEFAULT 0,
+    contributions DECIMAL(10,2) DEFAULT 0,
+    actual_pay DECIMAL(10,2),
+    net_salary AS (base_amount + adjustments - taxes - contributions),
+    payment_date DATE,
+    FOREIGN KEY (employee_id) REFERENCES Employee(employee_id)
+);
+
+-- Allowance Deduction Table
+CREATE TABLE AllowanceDeduction (
+    ad_id INT PRIMARY KEY IDENTITY(1,1),
+    payroll_id INT NOT NULL,
+    employee_id INT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(50),
+    duration VARCHAR(50),
+    timezone VARCHAR(50),
+    FOREIGN KEY (payroll_id) REFERENCES Payroll(payroll_id),
+    FOREIGN KEY (employee_id) REFERENCES Employee(employee_id),
+    FOREIGN KEY (currency) REFERENCES Currency(CurrencyName)
+);
+
+-- Payroll Policy Table
+CREATE TABLE PayrollPolicy (
+    policy_id INT PRIMARY KEY IDENTITY(1,1),
+    effective_date DATE NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    description NVARCHAR(MAX)
+);
+
+-- Overtime Policy Table
+CREATE TABLE OvertimePolicy (
+    policy_id INT PRIMARY KEY,
+    weekday_rate_multiplier DECIMAL(3,2) NOT NULL,
+    weekend_rate_multiplier DECIMAL(3,2) NOT NULL,
+    max_hours_per_month INT,
+    FOREIGN KEY (policy_id) REFERENCES PayrollPolicy(policy_id)
+);
+
+-- Lateness Policy Table
+CREATE TABLE LatenessPolicy (
+    policy_id INT PRIMARY KEY,
+    grace_period_mins INT NOT NULL,
+    deduction_rate DECIMAL(5,2) NOT NULL,
+    FOREIGN KEY (policy_id) REFERENCES PayrollPolicy(policy_id)
+);
+
+-- Bonus Policy Table
+CREATE TABLE BonusPolicy (
+    policy_id INT PRIMARY KEY,
+    bonus_type VARCHAR(50) NOT NULL,
+    eligibility_criteria NVARCHAR(MAX),
+    FOREIGN KEY (policy_id) REFERENCES PayrollPolicy(policy_id)
+);
+
+-- Deduction Policy Table
+CREATE TABLE DeductionPolicy (
+    policy_id INT PRIMARY KEY,
+    deduction_reason VARCHAR(100) NOT NULL,
+    calculation_mode VARCHAR(50) NOT NULL,
+    FOREIGN KEY (policy_id) REFERENCES PayrollPolicy(policy_id)
+);
+
+-- Payroll Policy ID Junction Table
+CREATE TABLE PayrollPolicy_ID (
+    payroll_id INT NOT NULL,
+    policy_id INT NOT NULL,
+    PRIMARY KEY (payroll_id, policy_id),
+    FOREIGN KEY (payroll_id) REFERENCES Payroll(payroll_id),
+    FOREIGN KEY (policy_id) REFERENCES PayrollPolicy(policy_id)
+);
+
+-- Payroll Log Table
+CREATE TABLE Payroll_Log (
+    payroll_log_id INT PRIMARY KEY IDENTITY(1,1),
+    payroll_id INT NOT NULL,
+    actor INT NOT NULL,
+    change_date DATETIME DEFAULT GETDATE(),
+    modification_type VARCHAR(100) NOT NULL,
+    FOREIGN KEY (payroll_id) REFERENCES Payroll(payroll_id)
+);
+
+-- Tax Form Table
+CREATE TABLE TaxForm (
+    tax_form_id INT PRIMARY KEY IDENTITY(1,1),
+    jurisdiction VARCHAR(100) NOT NULL,
+    validity_period VARCHAR(100),
+    form_content NVARCHAR(MAX)
+);
+
+-- Payroll Period Table
+CREATE TABLE PayrollPeriod (
+    payroll_period_id INT PRIMARY KEY IDENTITY(1,1),
+    payroll_id INT NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    status VARCHAR(20) DEFAULT 'Open',
+    FOREIGN KEY (payroll_id) REFERENCES Payroll(payroll_id),
+    CONSTRAINT CHK_PayrollPeriod_Dates CHECK (start_date < end_date)
+);
+
+-------------------------------Tarek End--------------------------------------
