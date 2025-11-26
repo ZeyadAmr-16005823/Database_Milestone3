@@ -1,3 +1,557 @@
+
+-- =============================================
+-- SYSTEM ADMINISTRATOR PROCEDURES (10)
+-- =============================================
+--------Ziad's Part----------------------------
+-- 1. ViewEmployeeInfo
+CREATE PROCEDURE ViewEmployeeInfo
+    @EmployeeID INT
+AS
+BEGIN
+    SELECT * FROM Employee WHERE EmployeeID = @EmployeeID;
+END;
+GO
+
+-- 2. AddEmployee
+CREATE PROCEDURE AddEmployee
+    @FullName VARCHAR(200),
+    @NationalID VARCHAR(50),
+    @DateOfBirth DATE,
+    @CountryOfBirth VARCHAR(100),
+    @Phone VARCHAR(50),
+    @Email VARCHAR(100),
+    @Address VARCHAR(255),
+    @EmergencyContactName VARCHAR(100),
+    @EmergencyContactPhone VARCHAR(50),
+    @Relationship VARCHAR(50),
+    @Biography VARCHAR(MAX),
+    @EmploymentProgress VARCHAR(100),
+    @AccountStatus VARCHAR(50),
+    @EmploymentStatus VARCHAR(50),
+    @HireDate DATE,
+    @IsActive BIT,
+    @ProfileCompletion INT,
+    @DepartmentID INT,
+    @PositionID INT,
+    @ManagerID INT,
+    @ContractID INT,
+    @TaxFormID INT,
+    @SalaryTypeID INT,
+    @PayGrade VARCHAR(50)
+AS
+BEGIN
+    DECLARE @NewEmployeeID INT;
+    
+    INSERT INTO Employee (
+        FullName, NationalID, DateOfBirth, CountryOfBirth, Phone, Email, 
+        Address, EmergencyContactName, EmergencyContactPhone, Relationship, 
+        Biography, EmploymentProgress, AccountStatus, EmploymentStatus, 
+        HireDate, IsActive, ProfileCompletion, DepartmentID, PositionID, 
+        ManagerID, ContractID, TaxFormID, SalaryTypeID, PayGrade
+    )
+    VALUES (
+        @FullName, @NationalID, @DateOfBirth, @CountryOfBirth, @Phone, @Email,
+        @Address, @EmergencyContactName, @EmergencyContactPhone, @Relationship,
+        @Biography, @EmploymentProgress, @AccountStatus, @EmploymentStatus,
+        @HireDate, @IsActive, @ProfileCompletion, @DepartmentID, @PositionID,
+        @ManagerID, @ContractID, @TaxFormID, @SalaryTypeID, @PayGrade
+    );
+    
+    SET @NewEmployeeID = SCOPE_IDENTITY();
+    SELECT 'Employee added successfully' AS Message, @NewEmployeeID AS EmployeeID;
+END;
+GO
+
+-- 3. UpdateEmployeeInfo
+CREATE PROCEDURE UpdateEmployeeInfo
+    @EmployeeID INT,
+    @Email VARCHAR(100),
+    @Phone VARCHAR(20),
+    @Address VARCHAR(150)
+AS
+BEGIN
+    UPDATE Employee
+    SET Email = @Email, Phone = @Phone, Address = @Address
+    WHERE EmployeeID = @EmployeeID;
+    
+    SELECT 'Employee information updated successfully' AS Message;
+END;
+GO
+
+-- 4. AssignRole
+CREATE PROCEDURE AssignRole
+    @EmployeeID INT,
+    @RoleID INT
+AS
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM Employee_Role WHERE EmployeeID = @EmployeeID AND RoleID = @RoleID)
+    BEGIN
+        INSERT INTO Employee_Role (EmployeeID, RoleID, AssignedDate)
+        VALUES (@EmployeeID, @RoleID, GETDATE());
+    END
+    
+    SELECT 'Role assigned successfully' AS Message;
+END;
+GO
+
+-- 5. GetDepartmentEmployeeStats
+CREATE PROCEDURE GetDepartmentEmployeeStats
+AS
+BEGIN
+    SELECT 
+        d.DepartmentName,
+        COUNT(e.EmployeeID) AS EmployeeCount
+    FROM Department d
+    LEFT JOIN Employee e ON d.DepartmentID = e.DepartmentID
+    GROUP BY d.DepartmentID, d.DepartmentName
+    ORDER BY d.DepartmentName;
+END;
+GO
+
+-- 6. ReassignManager
+CREATE PROCEDURE ReassignManager
+    @EmployeeID INT,
+    @NewManagerID INT
+AS
+BEGIN
+    UPDATE Employee SET ManagerID = @NewManagerID WHERE EmployeeID = @EmployeeID;
+    
+    UPDATE EmployeeHierarchy
+    SET ManagerID = @NewManagerID,
+        Level = (SELECT ISNULL(Level, 0) FROM EmployeeHierarchy WHERE EmployeeID = @NewManagerID) + 1
+    WHERE EmployeeID = @EmployeeID;
+    
+    SELECT 'Manager reassigned successfully' AS Message;
+END;
+GO
+
+-- 7. ReassignHierarchy
+CREATE PROCEDURE ReassignHierarchy
+    @EmployeeID INT,
+    @NewDepartmentID INT,
+    @NewManagerID INT
+AS
+BEGIN
+    UPDATE Employee
+    SET DepartmentID = @NewDepartmentID, ManagerID = @NewManagerID
+    WHERE EmployeeID = @EmployeeID;
+    
+    UPDATE EmployeeHierarchy
+    SET DepartmentID = @NewDepartmentID,
+        ManagerID = @NewManagerID,
+        Level = (SELECT ISNULL(Level, 0) FROM EmployeeHierarchy WHERE EmployeeID = @NewManagerID) + 1
+    WHERE EmployeeID = @EmployeeID;
+    
+    SELECT 'Hierarchy reassigned successfully' AS Message;
+END;
+GO
+
+-- 8. NotifyStructureChange
+CREATE PROCEDURE NotifyStructureChange
+    @AffectedEmployees VARCHAR(500),
+    @Message VARCHAR(200)
+AS
+BEGIN
+    DECLARE @EmployeeID INT;
+    DECLARE @Pos INT;
+    DECLARE @EmployeeList VARCHAR(500) = @AffectedEmployees;
+    
+    WHILE LEN(@EmployeeList) > 0
+    BEGIN
+        SET @Pos = CHARINDEX(',', @EmployeeList);
+        
+        IF @Pos = 0
+        BEGIN
+            SET @EmployeeID = CAST(@EmployeeList AS INT);
+            SET @EmployeeList = '';
+        END
+        ELSE
+        BEGIN
+            SET @EmployeeID = CAST(LEFT(@EmployeeList, @Pos - 1) AS INT);
+            SET @EmployeeList = SUBSTRING(@EmployeeList, @Pos + 1, LEN(@EmployeeList));
+        END
+        
+        INSERT INTO Notification (EmployeeID, Message, NotificationDate, IsRead)
+        VALUES (@EmployeeID, @Message, GETDATE(), 0);
+    END
+    
+    SELECT 'Notifications sent successfully' AS Message;
+END;
+GO
+
+-- 9. ViewOrgHierarchy
+CREATE PROCEDURE ViewOrgHierarchy
+AS
+BEGIN
+    SELECT 
+        e.EmployeeID,
+        e.FullName AS EmployeeName,
+        m.FullName AS ManagerName,
+        d.DepartmentName,
+        p.PositionTitle,
+        ISNULL(eh.Level, 0) AS HierarchyLevel
+    FROM Employee e
+    LEFT JOIN Employee m ON e.ManagerID = m.EmployeeID
+    LEFT JOIN Department d ON e.DepartmentID = d.DepartmentID
+    LEFT JOIN Position p ON e.PositionID = p.PositionID
+    LEFT JOIN EmployeeHierarchy eh ON e.EmployeeID = eh.EmployeeID
+    ORDER BY ISNULL(eh.Level, 0), d.DepartmentName, e.FullName;
+END;
+GO
+
+-- 10. ManageUserAccounts
+CREATE PROCEDURE ManageUserAccounts
+    @UserID INT,
+    @Role VARCHAR(50),
+    @Action VARCHAR(20)
+AS
+BEGIN
+    IF @Action = 'CREATE'
+    BEGIN
+        DECLARE @RoleID INT;
+        SELECT @RoleID = RoleID FROM Role WHERE RoleName = @Role;
+        
+        IF @RoleID IS NOT NULL
+        BEGIN
+            INSERT INTO Employee_Role (EmployeeID, RoleID, AssignedDate)
+            VALUES (@UserID, @RoleID, GETDATE());
+        END
+    END
+    ELSE IF @Action = 'DELETE'
+    BEGIN
+        DELETE FROM Employee_Role WHERE EmployeeID = @UserID;
+    END
+    
+    SELECT 'User account managed successfully' AS Message;
+END;
+GO
+
+-- =============================================
+-- HR ADMINISTRATOR PROCEDURES (6)
+-- =============================================
+
+-- 11. GetTeamByManager
+CREATE PROCEDURE GetTeamByManager
+    @ManagerID INT
+AS
+BEGIN
+    SELECT EmployeeID, FullName AS EmployeeName
+    FROM Employee
+    WHERE ManagerID = @ManagerID
+    ORDER BY FullName;
+END;
+GO
+
+-- 12. AssignDepartmentHead
+CREATE PROCEDURE AssignDepartmentHead
+    @DepartmentID INT,
+    @ManagerID INT
+AS
+BEGIN
+    UPDATE Department SET DepartmentHeadID = @ManagerID WHERE DepartmentID = @DepartmentID;
+    SELECT 'Department head assigned successfully' AS Message;
+END;
+GO
+
+-- 13. CreateEmployeeProfile
+CREATE PROCEDURE CreateEmployeeProfile
+    @FirstName VARCHAR(50),
+    @LastName VARCHAR(50),
+    @DepartmentID INT,
+    @RoleID INT,
+    @HireDate DATE,
+    @Email VARCHAR(100),
+    @Phone VARCHAR(20),
+    @NationalID VARCHAR(50),
+    @DateOfBirth DATE,
+    @CountryOfBirth VARCHAR(100)
+AS
+BEGIN
+    DECLARE @NewEmployeeID INT;
+    DECLARE @FullName VARCHAR(200) = @FirstName + ' ' + @LastName;
+    
+    INSERT INTO Employee (FullName, NationalID, DateOfBirth, CountryOfBirth, Phone, Email, HireDate, DepartmentID, IsActive, ProfileCompletion, AccountStatus)
+    VALUES (@FullName, @NationalID, @DateOfBirth, @CountryOfBirth, @Phone, @Email, @HireDate, @DepartmentID, 1, 30, 'Active');
+    
+    SET @NewEmployeeID = SCOPE_IDENTITY();
+    
+    INSERT INTO Employee_Role (EmployeeID, RoleID, AssignedDate)
+    VALUES (@NewEmployeeID, @RoleID, GETDATE());
+    
+    INSERT INTO EmployeeHierarchy (EmployeeID, DepartmentID, Level)
+    VALUES (@NewEmployeeID, @DepartmentID, 1);
+    
+    SELECT 'Employee profile created successfully' AS Message, @NewEmployeeID AS EmployeeID;
+END;
+GO
+
+-- 14. UpdateEmployeeProfile
+CREATE PROCEDURE UpdateEmployeeProfile
+    @EmployeeID INT,
+    @FieldName VARCHAR(50),
+    @NewValue VARCHAR(255)
+AS
+BEGIN
+    DECLARE @SQL NVARCHAR(MAX);
+    SET @SQL = N'UPDATE Employee SET ' + QUOTENAME(@FieldName) + ' = @Value WHERE EmployeeID = @EmpID';
+    EXEC sp_executesql @SQL, N'@Value VARCHAR(255), @EmpID INT', @Value = @NewValue, @EmpID = @EmployeeID;
+    
+    SELECT 'Employee profile updated successfully' AS Message;
+END;
+GO
+
+-- 15. SetProfileCompleteness
+CREATE PROCEDURE SetProfileCompleteness
+    @EmployeeID INT,
+    @CompletenessPercentage INT
+AS
+BEGIN
+    UPDATE Employee SET ProfileCompletion = @CompletenessPercentage WHERE EmployeeID = @EmployeeID;
+    SELECT 'Profile completeness updated successfully' AS Message, @CompletenessPercentage AS CompletenessPercentage;
+END;
+GO
+
+-- 16. GenerateProfileReport
+CREATE PROCEDURE GenerateProfileReport
+    @FilterField VARCHAR(50),
+    @FilterValue VARCHAR(100)
+AS
+BEGIN
+    DECLARE @SQL NVARCHAR(MAX);
+    SET @SQL = N'SELECT * FROM Employee WHERE ' + QUOTENAME(@FilterField) + ' = @Value';
+    EXEC sp_executesql @SQL, N'@Value VARCHAR(100)', @Value = @FilterValue;
+END;
+GO
+
+-- =============================================
+-- LINE MANAGER PROCEDURES (6)
+-- =============================================
+
+-- 17. GetTeamStatistics
+CREATE PROCEDURE GetTeamStatistics
+    @ManagerID INT
+AS
+BEGIN
+    SELECT COUNT(*) AS TeamSize, COUNT(*) AS SpanOfControl
+    FROM Employee
+    WHERE ManagerID = @ManagerID;
+END;
+GO
+
+-- 18. ViewTeamProfiles
+CREATE PROCEDURE ViewTeamProfiles
+    @ManagerID INT
+AS
+BEGIN
+    SELECT e.EmployeeID, e.FullName, e.Email, e.Phone, p.PositionTitle, d.DepartmentName, e.HireDate
+    FROM Employee e
+    LEFT JOIN Position p ON e.PositionID = p.PositionID
+    LEFT JOIN Department d ON e.DepartmentID = d.DepartmentID
+    WHERE e.ManagerID = @ManagerID
+    ORDER BY e.FullName;
+END;
+GO
+
+-- 19. GetTeamSummary
+CREATE PROCEDURE GetTeamSummary
+    @ManagerID INT
+AS
+BEGIN
+    SELECT p.PositionTitle AS Role, COUNT(*) AS EmployeeCount, AVG(DATEDIFF(YEAR, e.HireDate, GETDATE())) AS AverageTenure, d.DepartmentName
+    FROM Employee e
+    LEFT JOIN Position p ON e.PositionID = p.PositionID
+    LEFT JOIN Department d ON e.DepartmentID = d.DepartmentID
+    WHERE e.ManagerID = @ManagerID
+    GROUP BY p.PositionTitle, d.DepartmentName;
+END;
+GO
+
+-- 20. FilterTeamProfiles
+CREATE PROCEDURE FilterTeamProfiles
+    @ManagerID INT,
+    @Skill VARCHAR(50),
+    @RoleID INT
+AS
+BEGIN
+    SELECT DISTINCT e.EmployeeID, e.FullName, p.PositionTitle, d.DepartmentName
+    FROM Employee e
+    LEFT JOIN Position p ON e.PositionID = p.PositionID
+    LEFT JOIN Department d ON e.DepartmentID = d.DepartmentID
+    LEFT JOIN Employee_Skill es ON e.EmployeeID = es.EmployeeID
+    LEFT JOIN Skill s ON es.SkillID = s.SkillID
+    LEFT JOIN Employee_Role er ON e.EmployeeID = er.EmployeeID
+    WHERE e.ManagerID = @ManagerID
+        AND (@Skill IS NULL OR s.SkillName = @Skill)
+        AND (@RoleID IS NULL OR er.RoleID = @RoleID)
+    ORDER BY e.FullName;
+END;
+GO
+
+-- 21. ViewTeamCertifications
+CREATE PROCEDURE ViewTeamCertifications
+    @ManagerID INT
+AS
+BEGIN
+    SELECT e.EmployeeID, e.FullName, s.SkillName, v.VerificationName, v.IssuedDate, v.ExpiryDate
+    FROM Employee e
+    LEFT JOIN Employee_Skill es ON e.EmployeeID = es.EmployeeID
+    LEFT JOIN Skill s ON es.SkillID = s.SkillID
+    LEFT JOIN Employee_Verification ev ON e.EmployeeID = ev.EmployeeID
+    LEFT JOIN Verification v ON ev.VerificationID = v.VerificationID
+    WHERE e.ManagerID = @ManagerID
+    ORDER BY e.FullName, s.SkillName;
+END;
+GO
+
+-- 22. AddManagerNotes
+CREATE PROCEDURE AddManagerNotes
+    @EmployeeID INT,
+    @ManagerID INT,
+    @Note VARCHAR(500)
+AS
+BEGIN
+    INSERT INTO ManagerNotes (EmployeeID, ManagerID, Note, NoteDate)
+    VALUES (@EmployeeID, @ManagerID, @Note, GETDATE());
+    
+    SELECT 'Manager note added successfully' AS Message;
+END;
+GO
+
+-- =============================================
+-- EMPLOYEE PROCEDURES (6)
+-- =============================================
+
+-- 23. ViewEmployeeProfile
+CREATE PROCEDURE ViewEmployeeProfile
+    @EmployeeID INT
+AS
+BEGIN
+    SELECT e.*, p.PositionTitle, d.DepartmentName, m.FullName AS ManagerName
+    FROM Employee e
+    LEFT JOIN Position p ON e.PositionID = p.PositionID
+    LEFT JOIN Department d ON e.DepartmentID = d.DepartmentID
+    LEFT JOIN Employee m ON e.ManagerID = m.EmployeeID
+    WHERE e.EmployeeID = @EmployeeID;
+END;
+GO
+
+-- 24. UpdateContactInformation
+CREATE PROCEDURE UpdateContactInformation
+    @EmployeeID INT,
+    @RequestType VARCHAR(50),
+    @NewValue VARCHAR(100)
+AS
+BEGIN
+    IF @RequestType = 'Phone'
+        UPDATE Employee SET Phone = @NewValue WHERE EmployeeID = @EmployeeID;
+    ELSE IF @RequestType = 'Address'
+        UPDATE Employee SET Address = @NewValue WHERE EmployeeID = @EmployeeID;
+    ELSE IF @RequestType = 'Email'
+        UPDATE Employee SET Email = @NewValue WHERE EmployeeID = @EmployeeID;
+    
+    SELECT 'Contact information updated successfully' AS Message;
+END;
+GO
+
+-- 25. ViewEmploymentTimeline
+CREATE PROCEDURE ViewEmploymentTimeline
+    @EmployeeID INT
+AS
+BEGIN
+    SELECT 'Hired' AS EventType, e.HireDate AS EventDate, 'Hired as ' + ISNULL(p.PositionTitle, 'Employee') AS Description
+    FROM Employee e
+    LEFT JOIN Position p ON e.PositionID = p.PositionID
+    WHERE e.EmployeeID = @EmployeeID
+    ORDER BY EventDate;
+END;
+GO
+
+-- 26. UpdateEmergencyContact
+CREATE PROCEDURE UpdateEmergencyContact
+    @EmployeeID INT,
+    @ContactName VARCHAR(100),
+    @Relation VARCHAR(50),
+    @Phone VARCHAR(20)
+AS
+BEGIN
+    UPDATE Employee
+    SET EmergencyContactName = @ContactName, Relationship = @Relation, EmergencyContactPhone = @Phone
+    WHERE EmployeeID = @EmployeeID;
+    
+    SELECT 'Emergency contact updated successfully' AS Message;
+END;
+GO
+
+-- 27. RequestHRDocument
+CREATE PROCEDURE RequestHRDocument
+    @EmployeeID INT,
+    @DocumentType VARCHAR(50)
+AS
+BEGIN
+    INSERT INTO Notification (EmployeeID, Message, NotificationDate, IsRead)
+    VALUES (@EmployeeID, 'HR Document Request: ' + @DocumentType, GETDATE(), 0);
+    
+    SELECT 'HR document request submitted successfully' AS Message;
+END;
+GO
+
+-- 28. NotifyProfileUpdate
+CREATE PROCEDURE NotifyProfileUpdate
+    @EmployeeID INT,
+    @NotificationType VARCHAR(50)
+AS
+BEGIN
+    INSERT INTO Notification (EmployeeID, Message, NotificationDate, IsRead)
+    VALUES (@EmployeeID, 'Profile Update: ' + @NotificationType, GETDATE(), 0);
+    
+    SELECT 'Notification sent successfully' AS Message;
+END;
+GO
+
+-- =============================================
+-- HELPER FUNCTIONS (2)
+-- =============================================
+
+-- Function 1: GetHierarchyLevel
+CREATE FUNCTION dbo.GetHierarchyLevel(@EmployeeID INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Level INT = 0;
+    DECLARE @ManagerID INT;
+    
+    SELECT @ManagerID = ManagerID FROM Employee WHERE EmployeeID = @EmployeeID;
+    
+    WHILE @ManagerID IS NOT NULL
+    BEGIN
+        SET @Level = @Level + 1;
+        SELECT @ManagerID = ManagerID FROM Employee WHERE EmployeeID = @ManagerID;
+        
+        IF @Level > 100 BREAK; -- Safety limit
+    END
+    
+    RETURN @Level;
+END;
+GO
+
+-- Function 2: EmployeeExists
+CREATE FUNCTION dbo.EmployeeExists(@EmployeeID INT)
+RETURNS BIT
+AS
+BEGIN
+    IF EXISTS (SELECT 1 FROM Employee WHERE EmployeeID = @EmployeeID)
+        RETURN 1;
+    RETURN 0;
+END;
+GO
+---------ZIAD END------------------------------
+
+
+
+
+
+
+
 -- =============================================
 -- Tarek - Payroll, Salary Types & Policies
 -- Stored Procedures Script (CORRECTED VERSION)
@@ -1015,8 +1569,4 @@ BEGIN
 END;
 GO
 
--- =============================================
--- END OF PAYROLL OFFICER PROCEDURES
--- Total: 34 procedures as required
--- =============================================
 --------------------------Tarek End---------------------------
