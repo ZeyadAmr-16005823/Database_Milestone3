@@ -147,19 +147,36 @@ END;
 GO
 
 -- 8. NotifyStructureChange
-CREATE OR ALTER PROCEDURE NotifyStructureChange
+CREATE PROCEDURE NotifyStructureChange
     @AffectedEmployees VARCHAR(500),
     @Message VARCHAR(200)
 AS
 BEGIN
-    SET NOCOUNT ON;
-
-    INSERT INTO Notification (EmployeeID, Message, NotificationDate, IsRead)
-    SELECT TRY_CAST(LTRIM(RTRIM(value)) AS INT), @Message, GETDATE(), 0
-    FROM STRING_SPLIT(@AffectedEmployees, ',')
-    WHERE TRY_CAST(LTRIM(RTRIM(value)) AS INT) IS NOT NULL;
-
-    SELECT 'Notifications sent successfully' AS Message;
+    -- Create notification
+    DECLARE @NotificationID INT;
+    
+    INSERT INTO Notification (message_content, timestamp, urgency, read_status, notification_type)
+    VALUES (@Message, GETDATE(), 'High', 0, 'Structure Change');
+    
+    SET @NotificationID = SCOPE_IDENTITY();
+    
+    -- Parse employee IDs and send notifications
+    DECLARE @EmployeeID INT;
+    DECLARE @Position INT;
+    DECLARE @EmployeeList VARCHAR(500) = @AffectedEmployees + ',';
+    
+    WHILE CHARINDEX(',', @EmployeeList) > 0
+    BEGIN
+        SET @Position = CHARINDEX(',', @EmployeeList);
+        SET @EmployeeID = CAST(LTRIM(RTRIM(LEFT(@EmployeeList, @Position - 1))) AS INT);
+        
+        INSERT INTO Employee_Notification (employee_id, notification_id, delivery_status, delivered_at)
+        VALUES (@EmployeeID, @NotificationID, 'Pending', GETDATE());
+        
+        SET @EmployeeList = SUBSTRING(@EmployeeList, @Position + 1, LEN(@EmployeeList));
+    END
+    
+    SELECT 'Notification sent successfully' AS ConfirmationMessage;
 END;
 GO
 
