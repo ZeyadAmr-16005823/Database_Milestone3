@@ -165,6 +165,144 @@ CREATE INDEX IX_ApprovalWorkflowStep_Role ON ApprovalWorkflowStep(role_id);
 
 
 
+---------------Youssef-------------------------
+-- =============================================
+-- 1. Department Table
+-- =============================================
+CREATE TABLE Department (
+    department_id INT PRIMARY KEY IDENTITY(1,1),
+    department_name VARCHAR(100) NOT NULL UNIQUE,
+    purpose VARCHAR(500),
+    department_head_id INT NULL,
+    CONSTRAINT FK_Department_Head FOREIGN KEY (department_head_id) 
+        REFERENCES Employee(employee_id)
+);
+
+-- =============================================
+-- 2. Position Table
+-- =============================================
+CREATE TABLE Position (
+    position_id INT PRIMARY KEY IDENTITY(1,1),
+    position_title VARCHAR(100) NOT NULL,
+    responsibilities VARCHAR(1000),
+    status VARCHAR(20) CHECK (status IN ('Active', 'Inactive', 'Draft')) DEFAULT 'Active'
+);
+
+-- =============================================
+-- 3. Skill Table
+-- =============================================
+CREATE TABLE Skill (
+    skill_id INT PRIMARY KEY IDENTITY(1,1),
+    skill_name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(500)
+);
+
+-- =============================================
+-- 4. Employee_Skill Table (Many-to-Many)
+-- =============================================
+CREATE TABLE Employee_Skill (
+    employee_id INT NOT NULL,
+    skill_id INT NOT NULL,
+    proficiency_level VARCHAR(20) CHECK (proficiency_level IN ('Beginner', 'Intermediate', 'Advanced', 'Expert')),
+    PRIMARY KEY (employee_id, skill_id),
+    CONSTRAINT FK_EmployeeSkill_Employee FOREIGN KEY (employee_id) 
+        REFERENCES Employee(employee_id) ON DELETE CASCADE,
+    CONSTRAINT FK_EmployeeSkill_Skill FOREIGN KEY (skill_id) 
+        REFERENCES Skill(skill_id)
+);
+
+-- =============================================
+-- 5. Verification Table
+-- =============================================
+CREATE TABLE Verification (
+    verification_id INT PRIMARY KEY IDENTITY(1,1),
+    verification_type VARCHAR(50) NOT NULL,
+    issuer VARCHAR(150),
+    issue_date DATE,
+    expiry_period INT -- in days
+);
+
+-- =============================================
+-- 6. Employee_Verification Table (Many-to-Many)
+-- =============================================
+CREATE TABLE Employee_Verification (
+    employee_id INT NOT NULL,
+    verification_id INT NOT NULL,
+    PRIMARY KEY (employee_id, verification_id),
+    CONSTRAINT FK_EmployeeVerification_Employee FOREIGN KEY (employee_id) 
+        REFERENCES Employee(employee_id) ON DELETE CASCADE,
+    CONSTRAINT FK_EmployeeVerification_Verification FOREIGN KEY (verification_id) 
+        REFERENCES Verification(verification_id)
+);
+
+-- =============================================
+-- 7. Notification Table
+-- =============================================
+CREATE TABLE Notification (
+    notification_id INT PRIMARY KEY IDENTITY(1,1),
+    message_content VARCHAR(1000) NOT NULL,
+    timestamp DATETIME DEFAULT GETDATE(),
+    urgency VARCHAR(20) CHECK (urgency IN ('Low', 'Medium', 'High', 'Urgent')) DEFAULT 'Medium',
+    read_status BIT DEFAULT 0,
+    notification_type VARCHAR(50) NOT NULL
+);
+
+-- =============================================
+-- 8. Employee_Notification Table (Many-to-Many)
+-- =============================================
+CREATE TABLE Employee_Notification (
+    employee_id INT NOT NULL,
+    notification_id INT NOT NULL,
+    delivery_status VARCHAR(20) CHECK (delivery_status IN ('Pending', 'Delivered', 'Failed')) DEFAULT 'Pending',
+    delivered_at DATETIME,
+    PRIMARY KEY (employee_id, notification_id),
+    CONSTRAINT FK_EmployeeNotification_Employee FOREIGN KEY (employee_id) 
+        REFERENCES Employee(employee_id) ON DELETE CASCADE,
+    CONSTRAINT FK_EmployeeNotification_Notification FOREIGN KEY (notification_id) 
+        REFERENCES Notification(notification_id) ON DELETE CASCADE
+);
+
+-- =============================================
+-- Create Indexes for Performance
+-- =============================================
+
+-- Department Indexes
+CREATE INDEX IX_Department_Head ON Department(department_head_id);
+CREATE INDEX IX_Department_Name ON Department(department_name);
+
+-- Position Indexes
+CREATE INDEX IX_Position_Title ON Position(position_title);
+CREATE INDEX IX_Position_Status ON Position(status);
+
+-- Skill Indexes
+CREATE INDEX IX_Skill_Name ON Skill(skill_name);
+
+-- Employee_Skill Indexes
+CREATE INDEX IX_EmployeeSkill_Employee ON Employee_Skill(employee_id);
+CREATE INDEX IX_EmployeeSkill_Skill ON Employee_Skill(skill_id);
+CREATE INDEX IX_EmployeeSkill_Proficiency ON Employee_Skill(proficiency_level);
+
+-- Verification Indexes
+CREATE INDEX IX_Verification_Type ON Verification(verification_type);
+CREATE INDEX IX_Verification_IssueDate ON Verification(issue_date);
+
+-- Employee_Verification Indexes
+CREATE INDEX IX_EmployeeVerification_Employee ON Employee_Verification(employee_id);
+CREATE INDEX IX_EmployeeVerification_Verification ON Employee_Verification(verification_id);
+
+-- Notification Indexes
+CREATE INDEX IX_Notification_Type ON Notification(notification_type);
+CREATE INDEX IX_Notification_Urgency ON Notification(urgency);
+CREATE INDEX IX_Notification_Timestamp ON Notification(timestamp);
+CREATE INDEX IX_Notification_ReadStatus ON Notification(read_status);
+
+-- Employee_Notification Indexes
+CREATE INDEX IX_EmployeeNotification_Employee ON Employee_Notification(employee_id);
+CREATE INDEX IX_EmployeeNotification_Notification ON Employee_Notification(notification_id);
+CREATE INDEX IX_EmployeeNotification_DeliveryStatus ON Employee_Notification(delivery_status);
+-------------- End of Yousef's---------------------------
+
+
 ---------- Omar Zaher -----------
 -- ================================
 -- LEAVE MODULE
